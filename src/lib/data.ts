@@ -2,10 +2,29 @@
 
 export type Phase = 1 | 2 | 3 | 4 | 5 | null;
 
+export interface DataSourceRow {
+  category: string;
+  value: number;
+}
+
+export interface DataSourceMetadata {
+  evidenceDashboard: string;
+  locale: string;
+  source: string;
+  description: string;
+  reliabilityScore: string;
+  collectionDateTo: string;
+  collectionDateFrom: string;
+}
+
 export interface DataSource {
   id: string;
   name: string;
   unit: string;
+  chartType: "pie" | "bar";
+  chartData: { label: string; value: number; color: string }[];
+  tableData: DataSourceRow[];
+  metadata: DataSourceMetadata;
 }
 
 export interface AlignmentOption {
@@ -96,9 +115,16 @@ export const alignmentOptions: AlignmentOption[] = [
 
 export const contributingFactors: ContributingFactor[] = [
   // Availability
-  { id: "cf-1", name: "Available stock vs. caloric need for the population living in the area", section: "Availability", alignment: 4, isKeyIndicator: true, guidanceQuestion: "Compare available stocks with the caloric needs of the population. If possible, take into account the age and sex distribution of the population.", dataSources: [{ id: "ds-1", name: "Households facing physical or social barriers to access", unit: "Kachin_1" }, { id: "ds-2", name: "Households facing physical or social barriers to access", unit: "Kachin_1" }] },
-  { id: "cf-2", name: "Food stock for staple commodities", section: "Availability", alignment: 4, isKeyIndicator: true, guidanceQuestion: "Assess the food stock for staple commodities in the area relative to population needs.", dataSources: [{ id: "ds-3", name: "Market monitoring food stock levels", unit: "Kachin_1" }] },
-  { id: "cf-3", name: "Reduction in livestock production", section: "Availability", alignment: 2, isKeyIndicator: true, guidanceQuestion: "Evaluate the extent of reduction in livestock production compared to the reference year.", dataSources: [{ id: "ds-4", name: "Livestock production survey data", unit: "Kachin_1" }] },
+  { id: "cf-1", name: "Available stock vs. caloric need for the population living in the area", section: "Availability", alignment: 4, isKeyIndicator: true, guidanceQuestion: "Compare available stocks with the caloric needs of the population. If possible, take into account the age and sex distribution of the population.", dataSources: [
+    { id: "ds-1", name: "Households facing physical or social barriers to accessing marketplaces, by barrier", unit: "Kachin_1", chartType: "pie", chartData: [{ label: "Yes", value: 35, color: "#7c2d12" }, { label: "No", value: 65, color: "#3b4f6b" }, { label: "Prefer not to Answer", value: 2, color: "#dc2626" }], tableData: [{ category: "Yes", value: 35 }, { category: "No", value: 65 }, { category: "Prefer not to Answer", value: 2 }], metadata: { evidenceDashboard: "Households facing physical or social barriers to accessing marketplaces, by barrier - Kachin_1", locale: "en", source: "Source 30", description: "Percentage of households that reported facing social barriers", reliabilityScore: "R1-", collectionDateTo: "2024-09-24", collectionDateFrom: "2024-09-24" } },
+    { id: "ds-2", name: "Households facing physical or social barriers to accessing marketplaces, by type", unit: "Kachin_1", chartType: "pie", chartData: [{ label: "Distance", value: 40, color: "#3b4f6b" }, { label: "Security", value: 30, color: "#7c2d12" }, { label: "Infrastructure", value: 20, color: "#e8a643" }, { label: "Other", value: 10, color: "#6b7280" }], tableData: [{ category: "Distance", value: 40 }, { category: "Security", value: 30 }, { category: "Infrastructure", value: 20 }, { category: "Other", value: 10 }], metadata: { evidenceDashboard: "Households facing physical or social barriers to accessing marketplaces, by type - Kachin_1", locale: "en", source: "Source 30", description: "Breakdown of barrier types reported by households", reliabilityScore: "R1-", collectionDateTo: "2024-09-24", collectionDateFrom: "2024-09-24" } },
+  ] },
+  { id: "cf-2", name: "Food stock for staple commodities", section: "Availability", alignment: 4, isKeyIndicator: true, guidanceQuestion: "Assess the food stock for staple commodities in the area relative to population needs.", dataSources: [
+    { id: "ds-3", name: "Market monitoring food stock levels", unit: "Kachin_1", chartType: "bar", chartData: [{ label: "Rice", value: 45, color: "#3b4f6b" }, { label: "Wheat", value: 30, color: "#7c2d12" }, { label: "Maize", value: 55, color: "#e8a643" }, { label: "Pulses", value: 20, color: "#6b7280" }, { label: "Oil", value: 35, color: "#dc2626" }], tableData: [{ category: "Rice", value: 45 }, { category: "Wheat", value: 30 }, { category: "Maize", value: 55 }, { category: "Pulses", value: 20 }, { category: "Oil", value: 35 }], metadata: { evidenceDashboard: "Market monitoring food stock levels - Kachin_1", locale: "en", source: "Source 12", description: "Stock levels of staple commodities in monitored markets", reliabilityScore: "R2", collectionDateTo: "2024-10-15", collectionDateFrom: "2024-08-01" } },
+  ] },
+  { id: "cf-3", name: "Reduction in livestock production", section: "Availability", alignment: 2, isKeyIndicator: true, guidanceQuestion: "Evaluate the extent of reduction in livestock production compared to the reference year.", dataSources: [
+    { id: "ds-4", name: "Livestock production survey data", unit: "Kachin_1", chartType: "bar", chartData: [{ label: "Cattle", value: 72, color: "#3b4f6b" }, { label: "Goats", value: 58, color: "#7c2d12" }, { label: "Poultry", value: 85, color: "#e8a643" }, { label: "Pigs", value: 40, color: "#6b7280" }], tableData: [{ category: "Cattle", value: 72 }, { category: "Goats", value: 58 }, { category: "Poultry", value: 85 }, { category: "Pigs", value: 40 }], metadata: { evidenceDashboard: "Livestock production survey data - Kachin_1", locale: "en", source: "Source 8", description: "Livestock production index relative to baseline year", reliabilityScore: "R2+", collectionDateTo: "2024-11-01", collectionDateFrom: "2024-06-15" } },
+  ] },
   { id: "cf-4", name: "Reduction in agricultural production", section: "Availability", alignment: 3, isKeyIndicator: true, guidanceQuestion: "Evaluate the extent of reduction in agricultural production compared to the reference year." },
   { id: "cf-5", name: "Availability of staple food items in the markets", section: "Availability", alignment: 3, isKeyIndicator: false, guidanceQuestion: "Assess the availability of staple food items in the local markets." },
   { id: "cf-6", name: "Availability of essential non-food items in the markets (e.g. fuel and cooking fuel)", section: "Availability", alignment: 2, isKeyIndicator: false, guidanceQuestion: "Assess the availability of essential non-food items in the local markets." },
