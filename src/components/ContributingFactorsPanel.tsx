@@ -1,15 +1,114 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { contributingFactors, sections, categories, alignmentOptions, ContributingFactor, DataSource, Phase } from "@/lib/data";
-import { useFactorStore, FactorState } from "@/lib/store";
+import { contributingFactors, sections, categories, alignmentOptions, phaseDescriptions, ContributingFactor, DataSource, Phase } from "@/lib/data";
+import { useFactorStore, useCategoryStore, FactorState } from "@/lib/store";
 import PhaseBadge from "./PhaseBadge";
 import DataSourceModal from "./DataSourceModal";
 
+function CategoryBox({
+  id,
+  label,
+  phase,
+  isSelected,
+  onSelect,
+}: {
+  id: string;
+  label: string;
+  phase: Phase;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const borderColor = phase
+    ? phase === 1 ? "border-[#cde6cd]" : phase === 2 ? "border-[#f9e064]" : phase === 3 ? "border-[#e8a643]" : phase === 4 ? "border-[#c7422e]" : "border-[#6b1d1d]"
+    : "border-gray-300";
+
+  const leftBar = phase
+    ? phase === 1 ? "bg-[#cde6cd]" : phase === 2 ? "bg-[#f9e064]" : phase === 3 ? "bg-[#e8a643]" : phase === 4 ? "bg-[#c7422e]" : "bg-[#6b1d1d]"
+    : "";
+
+  return (
+    <button
+      onClick={onSelect}
+      className={`flex-1 border rounded px-3 py-2 text-xs font-medium text-gray-700 cursor-pointer text-left relative overflow-hidden transition-all ${borderColor} ${
+        isSelected ? "ring-2 ring-blue-400 bg-blue-50" : "hover:bg-gray-50"
+      }`}
+    >
+      {phase && <div className={`absolute left-0 top-0 bottom-0 w-1 ${leftBar}`} />}
+      <span className={phase ? "pl-1" : ""}>{label}</span>
+    </button>
+  );
+}
+
+function CategoryPhaseSelector({
+  categoryId,
+  phase,
+  onSelectPhase,
+  onClose,
+}: {
+  categoryId: string;
+  phase: Phase;
+  onSelectPhase: (phase: Phase) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  const desc = phase ? phaseDescriptions[phase] : null;
+
+  return (
+    <div ref={ref} className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <select
+          value={phase ?? ""}
+          onChange={(e) => {
+            const val = e.target.value;
+            onSelectPhase(val === "" ? null : (Number(val) as Phase));
+          }}
+          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+        >
+          <option value="">Select phase...</option>
+          {[1, 2, 3, 4, 5].map((p) => (
+            <option key={p} value={p}>
+              {phaseDescriptions[p]?.name}
+            </option>
+          ))}
+        </select>
+        <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      {desc && (
+        <div className="text-sm text-gray-600">
+          <p className="mb-1">Households either:</p>
+          <ul className="list-disc pl-5 space-y-1">
+            {desc.description.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ContributingFactorsPanel() {
   const store = useFactorStore();
+  const catStore = useCategoryStore();
   const [modalSources, setModalSources] = useState<DataSource[] | null>(null);
   const [modalIndex, setModalIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const groupedFactors = sections.map((section) => ({
     section,
@@ -20,6 +119,10 @@ export default function ContributingFactorsPanel() {
     setModalSources(sources);
     setModalIndex(index);
   }, []);
+
+  const toggleCategory = (catId: string) => {
+    setSelectedCategory((prev) => (prev === catId ? null : catId));
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -44,19 +147,39 @@ export default function ContributingFactorsPanel() {
         <div className="space-y-2">
           <div className="flex gap-2">
             {categories.filter((c) => c.row === 0).map((cat) => (
-              <div key={cat.id} className="flex-1 border border-gray-300 rounded px-3 py-2 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-50">
-                {cat.label}
-              </div>
+              <CategoryBox
+                key={cat.id}
+                id={cat.id}
+                label={cat.label}
+                phase={catStore.getCategoryPhase(cat.id)}
+                isSelected={selectedCategory === cat.id}
+                onSelect={() => toggleCategory(cat.id)}
+              />
             ))}
           </div>
           <div className="flex gap-2">
             {categories.filter((c) => c.row === 1).map((cat) => (
-              <div key={cat.id} className="flex-1 border border-gray-300 rounded px-3 py-2 text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-50">
-                {cat.label}
-              </div>
+              <CategoryBox
+                key={cat.id}
+                id={cat.id}
+                label={cat.label}
+                phase={catStore.getCategoryPhase(cat.id)}
+                isSelected={selectedCategory === cat.id}
+                onSelect={() => toggleCategory(cat.id)}
+              />
             ))}
           </div>
         </div>
+
+        {/* Phase selector for selected category */}
+        {selectedCategory && (
+          <CategoryPhaseSelector
+            categoryId={selectedCategory}
+            phase={catStore.getCategoryPhase(selectedCategory)}
+            onSelectPhase={(phase) => catStore.setCategoryPhase(selectedCategory, phase)}
+            onClose={() => setSelectedCategory(null)}
+          />
+        )}
       </div>
 
       {/* Table */}

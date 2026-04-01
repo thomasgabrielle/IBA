@@ -83,6 +83,41 @@ export interface UnitData {
   sectionPhases: Record<string, Phase>;
 }
 
+export const phaseDescriptions: Record<number, { name: string; description: string[] }> = {
+  1: {
+    name: "Phase 1 - Minimal",
+    description: [
+      "Households are able to meet essential food and non-food needs without engaging in atypical and unsustainable strategies to access food and income.",
+    ],
+  },
+  2: {
+    name: "Phase 2 - Stressed",
+    description: [
+      "Households have minimally adequate food consumption but are unable to afford some essential non-food expenditures without engaging in stress-coping strategies.",
+    ],
+  },
+  3: {
+    name: "Phase 3 - Crisis",
+    description: [
+      "Have food consumption gaps that are reflected by high or above-usual acute malnutrition; or",
+      "Are marginally able to meet minimum food needs but only by depleting essential livelihood assets or through crisis-coping",
+    ],
+  },
+  4: {
+    name: "Phase 4 - Emergency",
+    description: [
+      "Have large food consumption gaps which are reflected in very high acute malnutrition and excess mortality; or",
+      "Are able to mitigate large food consumption gaps but only by employing emergency livelihood strategies and asset liquidation.",
+    ],
+  },
+  5: {
+    name: "Phase 5 - Famine",
+    description: [
+      "Have an extreme lack of food and/or other basic needs even after full employment of coping strategies. Starvation, death, destitution and extremely critical acute malnutrition levels are evident.",
+    ],
+  },
+};
+
 export const sections = [
   "Availability",
   "Access",
