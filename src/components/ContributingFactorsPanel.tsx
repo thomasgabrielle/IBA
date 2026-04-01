@@ -192,9 +192,9 @@ function CategoryPhaseSelector({
   );
 }
 
-export default function ContributingFactorsPanel() {
-  const store = useFactorStore();
-  const catStore = useCategoryStore(store.state);
+export default function ContributingFactorsPanel({ unitId = "kachin-1" }: { unitId?: string }) {
+  const store = useFactorStore(unitId);
+  const catStore = useCategoryStore(store.state, unitId);
   const [modalSources, setModalSources] = useState<DataSource[] | null>(null);
   const [modalIndex, setModalIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

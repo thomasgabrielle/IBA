@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { contributingFactors, categories, computeIndicativePhase, Phase } from "./data";
+import { contributingFactors, categories, units, computeIndicativePhase, Phase } from "./data";
 
 export interface FactorState {
   alignment: Phase;
@@ -13,14 +13,28 @@ type StoreState = Record<string, FactorState>;
 // Stores manual overrides only. null = use auto-computed value.
 type CategoryOverrides = Record<string, Phase | undefined>;
 
-const STORAGE_KEY = "ipc-iba-factors";
-const CATEGORY_STORAGE_KEY = "ipc-iba-categories";
+function storageKey(unitId: string) {
+  return `ipc-iba-factors-${unitId}`;
+}
 
-function getInitialState(): StoreState {
+function categoryStorageKey(unitId: string) {
+  return `ipc-iba-categories-${unitId}`;
+}
+
+// Legacy keys for migration
+const LEGACY_STORAGE_KEY = "ipc-iba-factors";
+const LEGACY_CATEGORY_STORAGE_KEY = "ipc-iba-categories";
+
+function getInitialState(unitId: string): StoreState {
   const state: StoreState = {};
+  // Check if there's mock data for this unit
+  const unitData = units.find((u) => u.id === unitId);
+
   for (const cf of contributingFactors) {
+    // Use mock unit data for alignment if available, otherwise use default from contributing factor
+    const mockAlignment = unitData?.factors[cf.id];
     state[cf.id] = {
-      alignment: cf.alignment,
+      alignment: mockAlignment !== undefined ? mockAlignment : cf.alignment,
       isKeyIndicator: cf.isKeyIndicator,
       notes: "",
     };
@@ -28,14 +42,26 @@ function getInitialState(): StoreState {
   return state;
 }
 
-function loadState(): StoreState {
-  if (typeof window === "undefined") return getInitialState();
+function loadState(unitId: string): StoreState {
+  if (typeof window === "undefined") return getInitialState(unitId);
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    // Try unit-specific key first
+    let saved = localStorage.getItem(storageKey(unitId));
+
+    // Migrate legacy data for kachin-1
+    if (!saved && unitId === "kachin-1") {
+      saved = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (saved) {
+        // Migrate to new key
+        localStorage.setItem(storageKey(unitId), saved);
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    }
+
     if (saved) {
       const parsed = JSON.parse(saved) as StoreState;
       // Merge with defaults to pick up any new factors
-      const defaults = getInitialState();
+      const defaults = getInitialState(unitId);
       for (const key of Object.keys(defaults)) {
         if (!(key in parsed)) {
           parsed[key] = defaults[key];
@@ -46,32 +72,32 @@ function loadState(): StoreState {
   } catch {
     // ignore
   }
-  return getInitialState();
+  return getInitialState(unitId);
 }
 
-export function useFactorStore() {
-  const [state, setState] = useState<StoreState>(getInitialState);
+export function useFactorStore(unitId: string = "kachin-1") {
+  const [state, setState] = useState<StoreState>(() => getInitialState(unitId));
 
   useEffect(() => {
-    setState(loadState());
-  }, []);
+    setState(loadState(unitId));
+  }, [unitId]);
 
   const save = useCallback((newState: StoreState) => {
     setState(newState);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+      localStorage.setItem(storageKey(unitId), JSON.stringify(newState));
     } catch {
       // ignore
     }
-  }, []);
+  }, [unitId]);
 
   const setAlignment = useCallback((factorId: string, phase: Phase) => {
     setState((prev) => {
       const next = { ...prev, [factorId]: { ...prev[factorId], alignment: phase } };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(storageKey(unitId), JSON.stringify(next));
       return next;
     });
-  }, []);
+  }, [unitId]);
 
   const toggleKeyIndicator = useCallback((factorId: string) => {
     setState((prev) => {
@@ -79,18 +105,18 @@ export function useFactorStore() {
         ...prev,
         [factorId]: { ...prev[factorId], isKeyIndicator: !prev[factorId].isKeyIndicator },
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(storageKey(unitId), JSON.stringify(next));
       return next;
     });
-  }, []);
+  }, [unitId]);
 
   const setNotes = useCallback((factorId: string, notes: string) => {
     setState((prev) => {
       const next = { ...prev, [factorId]: { ...prev[factorId], notes } };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(storageKey(unitId), JSON.stringify(next));
       return next;
     });
-  }, []);
+  }, [unitId]);
 
   const getFactor = useCallback(
     (factorId: string): FactorState => {
@@ -100,17 +126,28 @@ export function useFactorStore() {
   );
 
   const resetAll = useCallback(() => {
-    const defaults = getInitialState();
+    const defaults = getInitialState(unitId);
     save(defaults);
-  }, [save]);
+  }, [unitId, save]);
 
   return { state, getFactor, setAlignment, toggleKeyIndicator, setNotes, resetAll };
 }
 
-function loadCategoryOverrides(): CategoryOverrides {
+function loadCategoryOverrides(unitId: string): CategoryOverrides {
   if (typeof window === "undefined") return {};
   try {
-    const saved = localStorage.getItem(CATEGORY_STORAGE_KEY);
+    // Try unit-specific key first
+    let saved = localStorage.getItem(categoryStorageKey(unitId));
+
+    // Migrate legacy data for kachin-1
+    if (!saved && unitId === "kachin-1") {
+      saved = localStorage.getItem(LEGACY_CATEGORY_STORAGE_KEY);
+      if (saved) {
+        localStorage.setItem(categoryStorageKey(unitId), saved);
+        localStorage.removeItem(LEGACY_CATEGORY_STORAGE_KEY);
+      }
+    }
+
     if (saved) return JSON.parse(saved) as CategoryOverrides;
   } catch {
     // ignore
@@ -125,12 +162,12 @@ export interface CategoryInfo {
   keyIndicators: { name: string; phase: Phase }[];
 }
 
-export function useCategoryStore(factorState: Record<string, FactorState>) {
+export function useCategoryStore(factorState: Record<string, FactorState>, unitId: string = "kachin-1") {
   const [overrides, setOverrides] = useState<CategoryOverrides>({});
 
   useEffect(() => {
-    setOverrides(loadCategoryOverrides());
-  }, []);
+    setOverrides(loadCategoryOverrides(unitId));
+  }, [unitId]);
 
   // Compute indicative phases from key indicators
   const getCategoryInfo = useCallback(
@@ -164,19 +201,19 @@ export function useCategoryStore(factorState: Record<string, FactorState>) {
   const setCategoryPhase = useCallback((categoryId: string, phase: Phase) => {
     setOverrides((prev) => {
       const next = { ...prev, [categoryId]: phase };
-      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(categoryStorageKey(unitId), JSON.stringify(next));
       return next;
     });
-  }, []);
+  }, [unitId]);
 
   const clearOverride = useCallback((categoryId: string) => {
     setOverrides((prev) => {
       const next = { ...prev };
       delete next[categoryId];
-      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(categoryStorageKey(unitId), JSON.stringify(next));
       return next;
     });
-  }, []);
+  }, [unitId]);
 
   return { getCategoryInfo, setCategoryPhase, clearOverride };
 }

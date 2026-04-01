@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { contributingFactors, sections, categories, units, getPhaseColor, getPhaseLabel, Phase, computeIndicativePhase } from "@/lib/data";
+import Link from "next/link";
+import { contributingFactors, sections, categories, units, getPhaseColor, getPhaseLabel, Phase } from "@/lib/data";
 import { useFactorStore, useCategoryStore } from "@/lib/store";
 
 function PhaseCell({ phase }: { phase: Phase | "na" | "inadequate" }) {
@@ -29,8 +30,17 @@ function PhaseCell({ phase }: { phase: Phase | "na" | "inadequate" }) {
 
 export default function AWLAMatrix() {
   const [search, setSearch] = useState("");
-  const store = useFactorStore();
-  const catStore = useCategoryStore(store.state);
+
+  // Load stores for each unit
+  const kachin1Store = useFactorStore("kachin-1");
+  const kachin1CatStore = useCategoryStore(kachin1Store.state, "kachin-1");
+  const chin2Store = useFactorStore("chin-2");
+  const chin2CatStore = useCategoryStore(chin2Store.state, "chin-2");
+
+  const unitStores: Record<string, { store: ReturnType<typeof useFactorStore>; catStore: ReturnType<typeof useCategoryStore> }> = {
+    "kachin-1": { store: kachin1Store, catStore: kachin1CatStore },
+    "chin-2": { store: chin2Store, catStore: chin2CatStore },
+  };
 
   const filteredSections = sections.map((section) => {
     const factors = contributingFactors
@@ -39,37 +49,21 @@ export default function AWLAMatrix() {
     return { section, factors };
   }).filter(({ factors }) => factors.length > 0 || search === "");
 
-  // For Kachin_1, read live data from the analyst store
-  // For other units, use the hardcoded mock data
   const getUnitPhase = (unitId: string, factorId: string): Phase | "na" | "inadequate" => {
-    if (unitId === "kachin-1") {
-      const fs = store.state[factorId];
-      if (!fs) return "na";
-      return fs.alignment ?? "na";
-    }
-    // Mock data for other units
-    const unit = units.find((u) => u.id === unitId);
-    if (!unit) return "na";
-    if (factorId in unit.factors) {
-      const val = unit.factors[factorId];
-      return val === null ? "na" : val;
-    }
-    if (unitId === "chin-2" && factorId === "cf-4") return "inadequate";
-    return "na";
+    const unitStore = unitStores[unitId];
+    if (!unitStore) return "na";
+    const fs = unitStore.store.state[factorId];
+    if (!fs) return "na";
+    return fs.alignment ?? "na";
   };
 
   const getSectionPhase = (unitId: string, section: string): Phase | null => {
-    if (unitId === "kachin-1") {
-      // Find the category that maps to this section
-      const cat = categories.find((c) => c.section === section);
-      if (!cat) return null;
-      const info = catStore.getCategoryInfo(cat.id);
-      return info.phase;
-    }
-    // Mock data for other units
-    const unit = units.find((u) => u.id === unitId);
-    if (!unit) return null;
-    return (unit.sectionPhases[section] as Phase) ?? null;
+    const unitStore = unitStores[unitId];
+    if (!unitStore) return null;
+    const cat = categories.find((c) => c.section === section);
+    if (!cat) return null;
+    const info = unitStore.catStore.getCategoryInfo(cat.id);
+    return info.phase;
   };
 
   return (
@@ -97,7 +91,12 @@ export default function AWLAMatrix() {
               <th className="text-left px-6 py-2 font-medium text-blue-600 w-[50%]">Key Indicators</th>
               {units.map((unit) => (
                 <th key={unit.id} className="text-center px-4 py-2 font-medium text-gray-700">
-                  {unit.name}
+                  <Link
+                    href={`/?unit=${unit.id}`}
+                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {unit.name}
+                  </Link>
                 </th>
               ))}
             </tr>

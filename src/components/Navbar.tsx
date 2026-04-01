@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { units } from "@/lib/data";
 
-export default function Navbar() {
+export default function Navbar({ unitId = "kachin-1" }: { unitId?: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isAdmin = pathname.startsWith("/admin");
+
+  const currentUnit = units.find((u) => u.id === unitId);
 
   return (
     <header>
@@ -53,9 +57,16 @@ export default function Navbar() {
             </svg>
           </button>
           <span className="font-medium text-gray-700">Unit:</span>
-          <select className="bg-nav-bg text-white text-sm rounded px-3 py-1 pr-8">
-            <option>Kachin 1</option>
-            <option>Chin 2</option>
+          <select
+            value={unitId}
+            onChange={(e) => router.push(`/?unit=${e.target.value}`)}
+            className="bg-nav-bg text-white text-sm rounded px-3 py-1 pr-8"
+          >
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
           </select>
           <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded border border-yellow-300">
             SPECIAL PROTOCOL

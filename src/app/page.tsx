@@ -1,11 +1,18 @@
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import ContributingFactorsPanel from "@/components/ContributingFactorsPanel";
 import RightPanel from "@/components/RightPanel";
 
-export default function AnalystPage() {
+function AnalystContent() {
+  const searchParams = useSearchParams();
+  const unitId = searchParams.get("unit") || "kachin-1";
+
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar />
+      <Navbar unitId={unitId} />
 
       {/* Yellow banner */}
       <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 flex items-center justify-between">
@@ -24,7 +31,7 @@ export default function AnalystPage() {
       <main className="flex-1 p-4 overflow-auto">
         <div className="flex gap-4 max-w-[1600px] mx-auto">
           <div className="w-1/2 min-w-0">
-            <ContributingFactorsPanel />
+            <ContributingFactorsPanel unitId={unitId} />
           </div>
           <div className="w-1/2 min-w-0">
             <RightPanel />
@@ -32,5 +39,13 @@ export default function AnalystPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AnalystPage() {
+  return (
+    <Suspense>
+      <AnalystContent />
+    </Suspense>
   );
 }
