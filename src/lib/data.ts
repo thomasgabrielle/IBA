@@ -137,15 +137,27 @@ export const sections = [
 ] as const;
 
 export const categories = [
-  { id: "vulnerability", label: "Vulnerability / Hazards", row: 0 },
-  { id: "mortality", label: "Mortality", row: 0 },
-  { id: "nutrition", label: "Nutrition Status", row: 0 },
-  { id: "food-availability", label: "Food Availability & Stability", row: 1 },
-  { id: "food-access", label: "Food Access & Stability", row: 1 },
-  { id: "food-utilization", label: "Food Utilization & Stability", row: 1 },
-  { id: "food-consumption", label: "Food Consumption", row: 1 },
-  { id: "livelihood", label: "Livelihood Change", row: 1 },
+  { id: "vulnerability", label: "Vulnerability / Hazards", row: 0, section: "Hazards / Conflict Dimension" },
+  { id: "mortality", label: "Mortality", row: 0, section: "Mortality" },
+  { id: "nutrition", label: "Nutrition Status", row: 0, section: "Nutrition" },
+  { id: "food-availability", label: "Food Availability & Stability", row: 1, section: "Availability" },
+  { id: "food-access", label: "Food Access & Stability", row: 1, section: "Access" },
+  { id: "food-utilization", label: "Food Utilization & Stability", row: 1, section: "Utilization" },
+  { id: "food-consumption", label: "Food Consumption", row: 1, section: null },
+  { id: "livelihood", label: "Livelihood Change", row: 1, section: null },
 ] as const;
+
+/**
+ * Compute indicative phase from key indicators using median (round up on ties).
+ * This reflects IPC methodology: central tendency biased toward severity.
+ */
+export function computeIndicativePhase(phases: Phase[]): Phase {
+  const valid = phases.filter((p): p is 1 | 2 | 3 | 4 | 5 => p !== null).sort((a, b) => a - b);
+  if (valid.length === 0) return null;
+  const mid = valid.length / 2;
+  // For even counts, take the upper-median (bias toward severity)
+  return valid[Math.ceil(mid) - 1];
+}
 
 export const alignmentOptions: AlignmentOption[] = [
   { phase: 2, color: "#f9e064", label: "No food gap" },

@@ -2,30 +2,32 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { contributingFactors, sections, categories, phaseDescriptions, ContributingFactor, DataSource, Phase } from "@/lib/data";
-import { useFactorStore, useCategoryStore, FactorState } from "@/lib/store";
+import { useFactorStore, useCategoryStore, FactorState, CategoryInfo } from "@/lib/store";
 import PhaseBadge from "./PhaseBadge";
 import DataSourceModal from "./DataSourceModal";
 
+const phaseColorMap: Record<number, { border: string; bar: string }> = {
+  1: { border: "border-[#cde6cd]", bar: "bg-[#cde6cd]" },
+  2: { border: "border-[#f9e064]", bar: "bg-[#f9e064]" },
+  3: { border: "border-[#e8a643]", bar: "bg-[#e8a643]" },
+  4: { border: "border-[#c7422e]", bar: "bg-[#c7422e]" },
+  5: { border: "border-[#6b1d1d]", bar: "bg-[#6b1d1d]" },
+};
+
 function CategoryBox({
-  id,
   label,
-  phase,
+  info,
   isSelected,
   onSelect,
 }: {
-  id: string;
   label: string;
-  phase: Phase;
+  info: CategoryInfo;
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  const borderColor = phase
-    ? phase === 1 ? "border-[#cde6cd]" : phase === 2 ? "border-[#f9e064]" : phase === 3 ? "border-[#e8a643]" : phase === 4 ? "border-[#c7422e]" : "border-[#6b1d1d]"
-    : "border-gray-300";
-
-  const leftBar = phase
-    ? phase === 1 ? "bg-[#cde6cd]" : phase === 2 ? "bg-[#f9e064]" : phase === 3 ? "bg-[#e8a643]" : phase === 4 ? "bg-[#c7422e]" : "bg-[#6b1d1d]"
-    : "";
+  const colors = info.phase ? phaseColorMap[info.phase] : null;
+  const borderColor = colors?.border ?? "border-gray-300";
+  const barColor = colors?.bar ?? "";
 
   return (
     <button
@@ -34,21 +36,28 @@ function CategoryBox({
         isSelected ? "ring-2 ring-blue-400 bg-blue-50" : "hover:bg-gray-50"
       }`}
     >
-      {phase && <div className={`absolute left-0 top-0 bottom-0 w-1 ${leftBar}`} />}
-      <span className={phase ? "pl-1" : ""}>{label}</span>
+      {info.phase && <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />}
+      <div className={info.phase ? "pl-1" : ""}>
+        <span>{label}</span>
+        {info.isOverridden && (
+          <span className="ml-1 text-[9px] text-blue-500" title="Manually overridden">●</span>
+        )}
+      </div>
     </button>
   );
 }
 
 function CategoryPhaseSelector({
   categoryId,
-  phase,
+  info,
   onSelectPhase,
+  onClearOverride,
   onClose,
 }: {
   categoryId: string;
-  phase: Phase;
+  info: CategoryInfo;
   onSelectPhase: (phase: Phase) => void;
+  onClearOverride: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -63,34 +72,56 @@ function CategoryPhaseSelector({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const desc = phase ? phaseDescriptions[phase] : null;
+  const desc = info.phase ? phaseDescriptions[info.phase] : null;
 
   return (
     <div ref={ref} className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+      {/* Phase selector */}
       <div className="flex items-center justify-between mb-3">
-        <select
-          value={phase ?? ""}
-          onChange={(e) => {
-            const val = e.target.value;
-            onSelectPhase(val === "" ? null : (Number(val) as Phase));
-          }}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
-        >
-          <option value="">Select phase...</option>
-          {[1, 2, 3, 4, 5].map((p) => (
-            <option key={p} value={p}>
-              {phaseDescriptions[p]?.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2 flex-1">
+          <select
+            value={info.phase ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              onSelectPhase(val === "" ? null : (Number(val) as Phase));
+            }}
+            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+          >
+            <option value="">Select phase...</option>
+            {[1, 2, 3, 4, 5].map((p) => (
+              <option key={p} value={p}>
+                {phaseDescriptions[p]?.name}
+              </option>
+            ))}
+          </select>
+          {info.isOverridden && (
+            <button
+              onClick={onClearOverride}
+              className="text-xs text-blue-600 hover:text-blue-800 whitespace-nowrap"
+              title="Reset to auto-computed value"
+            >
+              Reset
+            </button>
+          )}
+        </div>
         <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
+
+      {/* Auto-computed info */}
+      {info.computedPhase && (
+        <div className="text-xs text-gray-500 mb-3">
+          Auto-computed: <PhaseBadge phase={info.computedPhase} size="sm" />
+          {info.isOverridden && <span className="ml-1">(overridden)</span>}
+        </div>
+      )}
+
+      {/* Phase description */}
       {desc && (
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 mb-3">
           <p className="mb-1">Households either:</p>
           <ul className="list-disc pl-5 space-y-1">
             {desc.description.map((line, i) => (
@@ -99,13 +130,35 @@ function CategoryPhaseSelector({
           </ul>
         </div>
       )}
+
+      {/* Key indicators */}
+      {info.keyIndicators.length > 0 && (
+        <div className="border-t border-gray-100 pt-3">
+          <p className="text-xs font-semibold text-gray-700 mb-2">
+            Key Indicators ({info.keyIndicators.length})
+          </p>
+          <div className="space-y-1.5">
+            {info.keyIndicators.map((ki, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-gray-600 truncate">{ki.name}</span>
+                <PhaseBadge phase={ki.phase} size="sm" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {info.keyIndicators.length === 0 && (
+        <div className="text-xs text-gray-400 italic">
+          No key indicators selected for this section. Check the key indicator boxes below to auto-compute.
+        </div>
+      )}
     </div>
   );
 }
 
 export default function ContributingFactorsPanel() {
   const store = useFactorStore();
-  const catStore = useCategoryStore();
+  const catStore = useCategoryStore(store.state);
   const [modalSources, setModalSources] = useState<DataSource[] | null>(null);
   const [modalIndex, setModalIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -149,9 +202,8 @@ export default function ContributingFactorsPanel() {
             {categories.filter((c) => c.row === 0).map((cat) => (
               <CategoryBox
                 key={cat.id}
-                id={cat.id}
                 label={cat.label}
-                phase={catStore.getCategoryPhase(cat.id)}
+                info={catStore.getCategoryInfo(cat.id)}
                 isSelected={selectedCategory === cat.id}
                 onSelect={() => toggleCategory(cat.id)}
               />
@@ -161,9 +213,8 @@ export default function ContributingFactorsPanel() {
             {categories.filter((c) => c.row === 1).map((cat) => (
               <CategoryBox
                 key={cat.id}
-                id={cat.id}
                 label={cat.label}
-                phase={catStore.getCategoryPhase(cat.id)}
+                info={catStore.getCategoryInfo(cat.id)}
                 isSelected={selectedCategory === cat.id}
                 onSelect={() => toggleCategory(cat.id)}
               />
@@ -175,8 +226,9 @@ export default function ContributingFactorsPanel() {
         {selectedCategory && (
           <CategoryPhaseSelector
             categoryId={selectedCategory}
-            phase={catStore.getCategoryPhase(selectedCategory)}
+            info={catStore.getCategoryInfo(selectedCategory)}
             onSelectPhase={(phase) => catStore.setCategoryPhase(selectedCategory, phase)}
+            onClearOverride={() => catStore.clearOverride(selectedCategory)}
             onClose={() => setSelectedCategory(null)}
           />
         )}
