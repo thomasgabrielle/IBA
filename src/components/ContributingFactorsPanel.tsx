@@ -47,6 +47,22 @@ function CategoryBox({
   );
 }
 
+const phaseBgColors: Record<number, string> = {
+  1: "bg-[#cde6cd]",
+  2: "bg-[#f9e064]",
+  3: "bg-[#e8a643]",
+  4: "bg-[#c7422e]",
+  5: "bg-[#6b1d1d]",
+};
+
+const phaseTextColors: Record<number, string> = {
+  1: "text-gray-900",
+  2: "text-gray-900",
+  3: "text-gray-900",
+  4: "text-white",
+  5: "text-white",
+};
+
 function CategoryPhaseSelector({
   categoryId,
   info,
@@ -72,28 +88,15 @@ function CategoryPhaseSelector({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const desc = info.phase ? phaseDescriptions[info.phase] : null;
+  const catLabel = categories.find((c) => c.id === categoryId)?.label ?? categoryId;
 
   return (
     <div ref={ref} className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
-      {/* Phase selector */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 flex-1">
-          <select
-            value={info.phase ?? ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              onSelectPhase(val === "" ? null : (Number(val) as Phase));
-            }}
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
-          >
-            <option value="">Select phase...</option>
-            {[1, 2, 3, 4, 5].map((p) => (
-              <option key={p} value={p}>
-                {phaseDescriptions[p]?.name}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-900">{catLabel}</h3>
+          {info.phase && <PhaseBadge phase={info.phase} size="sm" />}
           {info.isOverridden && (
             <button
               onClick={onClearOverride}
@@ -104,7 +107,7 @@ function CategoryPhaseSelector({
             </button>
           )}
         </div>
-        <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600">
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -119,16 +122,49 @@ function CategoryPhaseSelector({
         </div>
       )}
 
-      {/* Phase description */}
-      {desc && (
-        <div className="text-sm text-gray-600 mb-3">
-          <p className="mb-1">Households either:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            {desc.description.map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
-        </div>
+      {/* Phase reference table */}
+      <div className="grid grid-cols-4 gap-0 border border-gray-300 rounded-lg overflow-hidden mb-3">
+        {[2, 3, 4, 5].map((p) => {
+          const desc = phaseDescriptions[p];
+          const isSelected = info.phase === p;
+          return (
+            <button
+              key={p}
+              onClick={() => onSelectPhase(p as Phase)}
+              className={`${phaseBgColors[p]} ${phaseTextColors[p]} p-3 text-left cursor-pointer transition-all border-r border-gray-300 last:border-r-0 ${
+                isSelected ? "ring-2 ring-inset ring-blue-600" : "hover:opacity-90"
+              }`}
+            >
+              <p className="text-xs font-bold mb-1.5">{desc?.name}</p>
+              <div className="text-[10px] leading-tight space-y-1">
+                {desc?.description.map((line, i) => (
+                  <p key={i}>{i > 0 ? `• ${line}` : line}</p>
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Phase 1 option */}
+      <button
+        onClick={() => onSelectPhase(1 as Phase)}
+        className={`w-full ${phaseBgColors[1]} ${phaseTextColors[1]} p-2 rounded-lg text-left cursor-pointer transition-all mb-3 ${
+          info.phase === 1 ? "ring-2 ring-blue-600" : "hover:opacity-90"
+        }`}
+      >
+        <p className="text-xs font-bold">{phaseDescriptions[1]?.name}</p>
+        <p className="text-[10px] leading-tight mt-0.5">{phaseDescriptions[1]?.description[0]}</p>
+      </button>
+
+      {/* Clear selection */}
+      {info.phase !== null && (
+        <button
+          onClick={() => onSelectPhase(null)}
+          className="text-xs text-gray-500 hover:text-gray-700 mb-3"
+        >
+          Clear selection
+        </button>
       )}
 
       {/* Key indicators */}
