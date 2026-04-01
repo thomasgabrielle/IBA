@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { contributingFactors, sections, units, getPhaseColor, getPhaseLabel, Phase } from "@/lib/data";
+import { contributingFactors, sections, categories, units, getPhaseColor, getPhaseLabel, Phase, computeIndicativePhase } from "@/lib/data";
+import { useFactorStore, useCategoryStore } from "@/lib/store";
 
 function PhaseCell({ phase }: { phase: Phase | "na" | "inadequate" }) {
   if (phase === "na" || phase === null) {
@@ -26,24 +27,10 @@ function PhaseCell({ phase }: { phase: Phase | "na" | "inadequate" }) {
   );
 }
 
-function SectionBar({ phase }: { phase: Phase }) {
-  const colors: Record<number, string> = {
-    1: "#cde6cd",
-    2: "#f9e064",
-    3: "#e8a643",
-    4: "#c7422e",
-    5: "#6b1d1d",
-  };
-  return (
-    <div
-      className="w-1.5 h-full absolute left-0 top-0 rounded-l"
-      style={{ backgroundColor: phase ? colors[phase] || "#e5e7eb" : "#e5e7eb" }}
-    />
-  );
-}
-
 export default function AWLAMatrix() {
   const [search, setSearch] = useState("");
+  const store = useFactorStore();
+  const catStore = useCategoryStore(store.state);
 
   const filteredSections = sections.map((section) => {
     const factors = contributingFactors
@@ -52,24 +39,34 @@ export default function AWLAMatrix() {
     return { section, factors };
   }).filter(({ factors }) => factors.length > 0 || search === "");
 
-  // Map unit factors with special values for demo
+  // For Kachin_1, read live data from the analyst store
+  // For other units, use the hardcoded mock data
   const getUnitPhase = (unitId: string, factorId: string): Phase | "na" | "inadequate" => {
+    if (unitId === "kachin-1") {
+      const fs = store.state[factorId];
+      if (!fs) return "na";
+      return fs.alignment ?? "na";
+    }
+    // Mock data for other units
     const unit = units.find((u) => u.id === unitId);
     if (!unit) return "na";
     if (factorId in unit.factors) {
       const val = unit.factors[factorId];
       return val === null ? "na" : val;
     }
-    // For factors not explicitly listed, return "na" for second unit
-    if (unitId === "chin-2") {
-      // Special case: cf-4 for Chin_2 is "Inadequate evidence"
-      if (factorId === "cf-4") return "inadequate";
-      return "na";
-    }
+    if (unitId === "chin-2" && factorId === "cf-4") return "inadequate";
     return "na";
   };
 
   const getSectionPhase = (unitId: string, section: string): Phase | null => {
+    if (unitId === "kachin-1") {
+      // Find the category that maps to this section
+      const cat = categories.find((c) => c.section === section);
+      if (!cat) return null;
+      const info = catStore.getCategoryInfo(cat.id);
+      return info.phase;
+    }
+    // Mock data for other units
     const unit = units.find((u) => u.id === unitId);
     if (!unit) return null;
     return (unit.sectionPhases[section] as Phase) ?? null;
