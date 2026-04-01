@@ -2,12 +2,26 @@
 
 export type Phase = 1 | 2 | 3 | 4 | 5 | null;
 
+export interface DataSource {
+  id: string;
+  name: string;
+  unit: string;
+}
+
+export interface AlignmentOption {
+  phase: Phase;
+  color: string;
+  label: string;
+}
+
 export interface ContributingFactor {
   id: string;
   name: string;
   section: string;
   alignment: Phase;
   isKeyIndicator: boolean;
+  guidanceQuestion?: string;
+  dataSources?: DataSource[];
 }
 
 export interface AnalysisPeriod {
@@ -71,15 +85,24 @@ export const categories = [
   { id: "livelihood", label: "Livelihood Change", row: 1 },
 ] as const;
 
+export const alignmentOptions: AlignmentOption[] = [
+  { phase: 2, color: "#f9e064", label: "No food gap" },
+  { phase: 3, color: "#e8a643", label: "Food gap on average (below avg. 2,100 kcal pp/day)" },
+  { phase: 4, color: "#c7422e", label: "Large food gap on average" },
+  { phase: 5, color: "#6b1d1d", label: "Extreme food gap on average" },
+  { phase: null, color: "#d1d5db", label: "Inadequate evidence" },
+  { phase: null, color: "#f3f4f6", label: "Alignment not determined" },
+];
+
 export const contributingFactors: ContributingFactor[] = [
   // Availability
-  { id: "cf-1", name: "Available stock vs. caloric need for the population living in the area", section: "Availability", alignment: 4, isKeyIndicator: true },
-  { id: "cf-2", name: "Food stock for staple commodities", section: "Availability", alignment: 4, isKeyIndicator: true },
-  { id: "cf-3", name: "Reduction in livestock production", section: "Availability", alignment: 2, isKeyIndicator: true },
-  { id: "cf-4", name: "Reduction in agricultural production", section: "Availability", alignment: 3, isKeyIndicator: true },
-  { id: "cf-5", name: "Availability of staple food items in the markets", section: "Availability", alignment: 3, isKeyIndicator: false },
-  { id: "cf-6", name: "Availability of essential non-food items in the markets (e.g. fuel and cooking fuel)", section: "Availability", alignment: 2, isKeyIndicator: false },
-  { id: "cf-7", name: "Availability of wild foods (plants, insects, mushrooms, fish, game meat)", section: "Availability", alignment: 2, isKeyIndicator: false },
+  { id: "cf-1", name: "Available stock vs. caloric need for the population living in the area", section: "Availability", alignment: 4, isKeyIndicator: true, guidanceQuestion: "Compare available stocks with the caloric needs of the population. If possible, take into account the age and sex distribution of the population.", dataSources: [{ id: "ds-1", name: "Households facing physical or social barriers to access", unit: "Kachin_1" }, { id: "ds-2", name: "Households facing physical or social barriers to access", unit: "Kachin_1" }] },
+  { id: "cf-2", name: "Food stock for staple commodities", section: "Availability", alignment: 4, isKeyIndicator: true, guidanceQuestion: "Assess the food stock for staple commodities in the area relative to population needs.", dataSources: [{ id: "ds-3", name: "Market monitoring food stock levels", unit: "Kachin_1" }] },
+  { id: "cf-3", name: "Reduction in livestock production", section: "Availability", alignment: 2, isKeyIndicator: true, guidanceQuestion: "Evaluate the extent of reduction in livestock production compared to the reference year.", dataSources: [{ id: "ds-4", name: "Livestock production survey data", unit: "Kachin_1" }] },
+  { id: "cf-4", name: "Reduction in agricultural production", section: "Availability", alignment: 3, isKeyIndicator: true, guidanceQuestion: "Evaluate the extent of reduction in agricultural production compared to the reference year." },
+  { id: "cf-5", name: "Availability of staple food items in the markets", section: "Availability", alignment: 3, isKeyIndicator: false, guidanceQuestion: "Assess the availability of staple food items in the local markets." },
+  { id: "cf-6", name: "Availability of essential non-food items in the markets (e.g. fuel and cooking fuel)", section: "Availability", alignment: 2, isKeyIndicator: false, guidanceQuestion: "Assess the availability of essential non-food items in the local markets." },
+  { id: "cf-7", name: "Availability of wild foods (plants, insects, mushrooms, fish, game meat)", section: "Availability", alignment: 2, isKeyIndicator: false, guidanceQuestion: "Assess the availability of wild foods that the population can access." },
   // Access
   { id: "cf-8", name: "Market functionality (destroyed or doesn't have basic commodities)", section: "Access", alignment: 2, isKeyIndicator: true },
   { id: "cf-9", name: "Physical access to agricultural land", section: "Access", alignment: 3, isKeyIndicator: true },
