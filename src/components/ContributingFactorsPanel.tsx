@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { contributingFactors, sections, categories, alignmentOptions, phaseDescriptions, ContributingFactor, DataSource, Phase } from "@/lib/data";
+import { contributingFactors, sections, categories, phaseDescriptions, ContributingFactor, DataSource, Phase } from "@/lib/data";
 import { useFactorStore, useCategoryStore, FactorState } from "@/lib/store";
 import PhaseBadge from "./PhaseBadge";
 import DataSourceModal from "./DataSourceModal";
@@ -245,19 +245,23 @@ function AlignmentPopover({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const phaseOptions: { phase: Phase; label: string }[] = [
-    { phase: 1, label: "Phase 1 — Minimal" },
-    { phase: 2, label: "Phase 2 — Stressed" },
-    { phase: 3, label: "Phase 3 — Crisis" },
-    { phase: 4, label: "Phase 4 — Emergency" },
-    { phase: 5, label: "Phase 5 — Famine" },
-    { phase: null, label: "Not determined" },
-  ];
+  const options = factor.phaseOptions && factor.phaseOptions.length > 0
+    ? factor.phaseOptions
+    : [
+        { phase: 2 as Phase, label: "Phase 2" },
+        { phase: 3 as Phase, label: "Phase 3" },
+        { phase: 4 as Phase, label: "Phase 4" },
+        { phase: 5 as Phase, label: "Phase 5" },
+      ];
+
+  const phaseColors: Record<number, string> = {
+    2: "#f9e064", 3: "#e8a643", 4: "#c7422e", 5: "#6b1d1d",
+  };
 
   return (
     <div
       ref={ref}
-      className="absolute z-50 top-full left-0 mt-1 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4"
+      className="absolute z-50 top-full left-0 mt-1 w-96 bg-white rounded-lg shadow-xl border border-gray-200 p-4"
     >
       {factor.guidanceQuestion && (
         <div className="flex gap-2 mb-4 text-sm text-gray-700">
@@ -267,48 +271,37 @@ function AlignmentPopover({
           <p>{factor.guidanceQuestion}</p>
         </div>
       )}
-      <div className="space-y-1">
-        {alignmentOptions.map((opt, i) => (
+      <div className="space-y-1.5">
+        {options.map((opt) => (
           <button
-            key={i}
+            key={String(opt.phase)}
             onClick={() => {
               onSelect(opt.phase);
               onClose();
             }}
-            className="flex items-center gap-3 w-full text-left cursor-pointer hover:bg-gray-50 rounded px-2 py-1.5"
+            className={`flex items-center gap-3 w-full text-left cursor-pointer rounded px-2 py-2 transition ${
+              currentPhase === opt.phase ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-gray-50"
+            }`}
           >
-            <div className="w-3.5 h-5 rounded-sm shrink-0" style={{ backgroundColor: opt.color }} />
+            <div
+              className="w-3.5 h-5 rounded-sm shrink-0"
+              style={{ backgroundColor: opt.phase ? phaseColors[opt.phase] || "#d1d5db" : "#d1d5db" }}
+            />
             <span className="text-sm text-gray-700">{opt.label}</span>
           </button>
         ))}
-      </div>
-      <div className="border-t border-gray-100 mt-3 pt-3">
-        <p className="text-xs text-gray-400 mb-2">Or select a phase directly:</p>
-        <div className="flex gap-1.5">
-          {phaseOptions.map((opt) => (
-            <button
-              key={String(opt.phase)}
-              onClick={() => {
-                onSelect(opt.phase);
-                onClose();
-              }}
-              className={`flex-1 text-center py-1.5 text-xs font-medium rounded transition ${
-                currentPhase === opt.phase
-                  ? "ring-2 ring-blue-500 ring-offset-1"
-                  : ""
-              }`}
-              style={{
-                backgroundColor: opt.phase === null ? "#f3f4f6" : undefined,
-              }}
-            >
-              {opt.phase === null ? (
-                <span className="text-gray-500">—</span>
-              ) : (
-                <PhaseBadge phase={opt.phase} size="sm" />
-              )}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => {
+            onSelect(null);
+            onClose();
+          }}
+          className={`flex items-center gap-3 w-full text-left cursor-pointer rounded px-2 py-2 transition ${
+            currentPhase === null ? "bg-blue-50 ring-1 ring-blue-300" : "hover:bg-gray-50"
+          }`}
+        >
+          <div className="w-3.5 h-5 rounded-sm shrink-0 bg-gray-200" />
+          <span className="text-sm text-gray-500">Not determined</span>
+        </button>
       </div>
     </div>
   );
@@ -388,7 +381,9 @@ function FactorRow({
   const [expanded, setExpanded] = useState(false);
   const [showPopover, setShowPopover] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const hasSources = factor.dataSources && factor.dataSources.length > 0;
+  const hasSourceNames = factor.dataSourceNames && factor.dataSourceNames.length > 0;
+  const hasAnalysis = !!factor.analysisText;
+  const isExpandable = hasSourceNames || hasAnalysis;
 
   return (
     <>
@@ -398,7 +393,7 @@ function FactorRow({
           onClick={() => setExpanded(!expanded)}
         >
           <div className="flex items-center gap-1">
-            {hasSources && (
+            {isExpandable && (
               <svg
                 className={`w-3 h-3 text-gray-400 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -458,24 +453,32 @@ function FactorRow({
           )}
         </td>
       </tr>
-      {expanded && hasSources && (
+      {expanded && isExpandable && (
         <tr className="bg-blue-50/30">
           <td colSpan={4} className="px-4 pb-3 pt-1">
             <div className="pl-4">
-              <p className="text-xs font-semibold text-gray-800 mb-2">Data Sources</p>
-              {factor.dataSources!.map((ds, i) => (
-                <button
-                  key={ds.id}
-                  onClick={() => onOpenSource(factor.dataSources!, i)}
-                  className="flex items-center gap-2 py-1.5 text-xs text-blue-600 hover:text-blue-800 hover:underline w-full text-left"
-                >
-                  <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                  <span>{ds.name}</span>
-                  <span className="text-gray-400">{ds.unit}</span>
-                </button>
-              ))}
+              {hasSourceNames && (
+                <>
+                  <p className="text-xs font-semibold text-gray-800 mb-2">Data Sources</p>
+                  {factor.dataSourceNames!.map((name, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 py-1.5 text-xs text-blue-600"
+                    >
+                      <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      <span>{name}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              {hasAnalysis && (
+                <div className="mt-2">
+                  <p className="text-xs font-semibold text-gray-800 mb-1">Analysis</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">{factor.analysisText}</p>
+                </div>
+              )}
             </div>
           </td>
         </tr>
